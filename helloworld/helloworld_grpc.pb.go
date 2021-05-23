@@ -25,6 +25,8 @@ type GreeterClient interface {
 	// Sends a greeting
 	SayHello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error)
 	HeyDinh(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloReply, error)
+	FetchResponse(ctx context.Context, in *Request, opts ...grpc.CallOption) (Greeter_FetchResponseClient, error)
+	RateLaptop(ctx context.Context, opts ...grpc.CallOption) (Greeter_RateLaptopClient, error)
 }
 
 type greeterClient struct {
@@ -53,6 +55,69 @@ func (c *greeterClient) HeyDinh(ctx context.Context, in *HelloRequest, opts ...g
 	return out, nil
 }
 
+func (c *greeterClient) FetchResponse(ctx context.Context, in *Request, opts ...grpc.CallOption) (Greeter_FetchResponseClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Greeter_ServiceDesc.Streams[0], "/helloworld.Greeter/FetchResponse", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &greeterFetchResponseClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Greeter_FetchResponseClient interface {
+	Recv() (*Response, error)
+	grpc.ClientStream
+}
+
+type greeterFetchResponseClient struct {
+	grpc.ClientStream
+}
+
+func (x *greeterFetchResponseClient) Recv() (*Response, error) {
+	m := new(Response)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *greeterClient) RateLaptop(ctx context.Context, opts ...grpc.CallOption) (Greeter_RateLaptopClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Greeter_ServiceDesc.Streams[1], "/helloworld.Greeter/RateLaptop", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &greeterRateLaptopClient{stream}
+	return x, nil
+}
+
+type Greeter_RateLaptopClient interface {
+	Send(*RateLaptopRequest) error
+	Recv() (*RateLaptopResponse, error)
+	grpc.ClientStream
+}
+
+type greeterRateLaptopClient struct {
+	grpc.ClientStream
+}
+
+func (x *greeterRateLaptopClient) Send(m *RateLaptopRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *greeterRateLaptopClient) Recv() (*RateLaptopResponse, error) {
+	m := new(RateLaptopResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // GreeterServer is the server API for Greeter service.
 // All implementations must embed UnimplementedGreeterServer
 // for forward compatibility
@@ -60,6 +125,8 @@ type GreeterServer interface {
 	// Sends a greeting
 	SayHello(context.Context, *HelloRequest) (*HelloReply, error)
 	HeyDinh(context.Context, *HelloRequest) (*HelloReply, error)
+	FetchResponse(*Request, Greeter_FetchResponseServer) error
+	RateLaptop(Greeter_RateLaptopServer) error
 	mustEmbedUnimplementedGreeterServer()
 }
 
@@ -72,6 +139,12 @@ func (UnimplementedGreeterServer) SayHello(context.Context, *HelloRequest) (*Hel
 }
 func (UnimplementedGreeterServer) HeyDinh(context.Context, *HelloRequest) (*HelloReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HeyDinh not implemented")
+}
+func (UnimplementedGreeterServer) FetchResponse(*Request, Greeter_FetchResponseServer) error {
+	return status.Errorf(codes.Unimplemented, "method FetchResponse not implemented")
+}
+func (UnimplementedGreeterServer) RateLaptop(Greeter_RateLaptopServer) error {
+	return status.Errorf(codes.Unimplemented, "method RateLaptop not implemented")
 }
 func (UnimplementedGreeterServer) mustEmbedUnimplementedGreeterServer() {}
 
@@ -122,6 +195,53 @@ func _Greeter_HeyDinh_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Greeter_FetchResponse_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(Request)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(GreeterServer).FetchResponse(m, &greeterFetchResponseServer{stream})
+}
+
+type Greeter_FetchResponseServer interface {
+	Send(*Response) error
+	grpc.ServerStream
+}
+
+type greeterFetchResponseServer struct {
+	grpc.ServerStream
+}
+
+func (x *greeterFetchResponseServer) Send(m *Response) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _Greeter_RateLaptop_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GreeterServer).RateLaptop(&greeterRateLaptopServer{stream})
+}
+
+type Greeter_RateLaptopServer interface {
+	Send(*RateLaptopResponse) error
+	Recv() (*RateLaptopRequest, error)
+	grpc.ServerStream
+}
+
+type greeterRateLaptopServer struct {
+	grpc.ServerStream
+}
+
+func (x *greeterRateLaptopServer) Send(m *RateLaptopResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *greeterRateLaptopServer) Recv() (*RateLaptopRequest, error) {
+	m := new(RateLaptopRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Greeter_ServiceDesc is the grpc.ServiceDesc for Greeter service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -138,6 +258,18 @@ var Greeter_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Greeter_HeyDinh_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "FetchResponse",
+			Handler:       _Greeter_FetchResponse_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "RateLaptop",
+			Handler:       _Greeter_RateLaptop_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "helloworld/helloworld.proto",
 }

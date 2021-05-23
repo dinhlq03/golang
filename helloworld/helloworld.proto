@@ -26,6 +26,8 @@ service Greeter {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
   rpc HeyDinh (HelloRequest) returns (HelloReply) {}
+  rpc FetchResponse (Request) returns (stream Response) {}
+  rpc RateLaptop(stream RateLaptopRequest) returns (stream RateLaptopResponse) {};
 }
 
 // The request message containing the user's name.
@@ -38,7 +40,23 @@ message HelloReply {
   string message = 1;
 }
 
-message ChatMessage {
-	string name = 1;
-	string message = 2;
+message Request {
+  int32 id = 1;
+  string name = 2;
 }
+
+message Response {
+  string result = 1;
+}
+
+message RateLaptopRequest {
+  string laptop_id = 1;
+  double score = 2;
+}
+
+message RateLaptopResponse {
+  string laptop_id = 1;
+  uint32 rated_count = 2;
+  double average_score = 3;
+}
+

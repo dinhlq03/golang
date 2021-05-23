@@ -21,6 +21,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -61,4 +62,23 @@ func main() {
 		log.Fatalf("could not greet: %v", err)
 	}
 	log.Printf("Greeting: %s", r.GetMessage())
+
+	in := &pb.Request{Id: 100}
+
+	stream, err := c.FetchResponse(context.Background(), in)
+	if err != nil {
+		log.Fatalf("open stream error %v", err)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			log.Fatalf("cannot receive %v", err)
+		}
+		log.Printf("Resp received: %s", resp.Result)
+	}
+
 }
